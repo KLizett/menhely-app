@@ -66,7 +66,8 @@ async function handleLogout() {
         <div v-if="isMainMenuOpen" class="dropdown-menu left-menu">
           <router-link to="/home" class="menu-item">Kutyáink</router-link>
           <router-link to="/walk" class="menu-item">Séta rögzítése</router-link>
-          <router-link to="/admin" class="menu-item">Statisztikák</router-link>
+          <router-link to="/stat" class="menu-item">Statisztikák</router-link>
+          <router-link to="/admin" class="menu-item">Admin felület</router-link>
         </div>
       </div>
 

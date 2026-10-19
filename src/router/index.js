@@ -1,10 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 // 1. Lépés: Importáljuk a létrehozott Kezdőlap komponenst
 import HomeView from '../views/HomeView.vue'
-import AdminView from '../views/AdminView.vue'
+import StatView from '../views/StatView.vue'
 import WalkView from '../views/WalkView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import LoginView from '../views/LoginView.vue'
+import AdminView from '../views/AdminView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,9 +17,9 @@ const router = createRouter({
       component: HomeView
     },
     {
-      path: '/admin', // <-- Ez lesz az új útvonal
-      name: 'admin',
-      component: AdminView
+      path: '/stat', // <-- Ez lesz az új útvonal
+      name: 'stat',
+      component: StatView
     },
     {
       path: '/walk',
@@ -34,6 +35,11 @@ const router = createRouter({
       path: '/',
       name: 'login',
       component: LoginView
+    },
+        {
+      path: '/admin',
+      name: 'admin',
+      component: AdminView
     }
   ],
 })

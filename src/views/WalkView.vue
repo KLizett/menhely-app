@@ -34,6 +34,10 @@ const aktivSetak = ref([])
 const showModal = ref(false)
 const KivalasztottKutya = ref(null)
 const onkentesNev = ref('')
+const setaInditasModal = (kutya) => {
+  KivalasztottKutya.value = kutya; // <-- Ez beállítja a kutyát?
+  showModal.value = true;          // <-- Ez megnyitja a modalt?
+}
 
 // Lezárás modal
 const showCloseModal = ref(false)
@@ -69,10 +73,10 @@ const szurtKutyak = computed(() => {
   })
 })
 
-function setaInditasModal(kutya) {
-  KivalasztottKutya.value = kutya
-  showModal.value = true
-}
+//function setaInditasModal(kutya) {
+ // KivalasztottKutya.value = kutya
+ // showModal.value = true
+//}
 
 async function setaMentese() {
   if (!onkentesNev.value.trim()) {
@@ -168,6 +172,17 @@ async function handleLogout() {
   await supabase.auth.signOut() // Elfelejti a bejelentkezett felhasználót
   router.push('/')             // Visszadob a LoginView-ra
 }
+
+// Segédfüggvény a kor vagy születési idő megjelenítésére
+const getAgeDisplay = (dog) => {
+  if (dog.birthday) {
+    return `Születési idő: ${dog.birthday}`;
+  } else if (dog.age_years) {
+    return `Kor: ${dog.age_years} év`;
+  }
+  return 'Nincs megadva kor';
+}
+
 </script>
 
 <template>
@@ -179,7 +194,8 @@ async function handleLogout() {
         <div v-if="isMainMenuOpen" class="dropdown-menu left-menu">
           <router-link to="/home" class="menu-item">Kutyáink</router-link>
           <router-link to="/walk" class="menu-item">Séta rögzítése</router-link>
-          <router-link to="/admin" class="menu-item">Statisztikák</router-link>
+          <router-link to="/stat" class="menu-item">Statisztikák</router-link>
+          <router-link to="/admin" class="menu-item">Admin felület</router-link>
         </div>
       </div>
 
@@ -246,10 +262,33 @@ async function handleLogout() {
       </div>
     </main>
 
-    <!-- SÉTA INDÍTÁSA MODAL -->
+<!-- SÉTA INDÍTÁSA MODAL -->
     <div v-if="showModal" class="modal-overlay">
       <div class="modal-content">
         <h3>Séta indítása: {{ KivalasztottKutya?.name }}</h3>
+
+        <!-- KUTYA INFORMÁCIÓS FELUGRÓ / KÁRTYA -->
+        <div v-if="KivalasztottKutya" class="dog-info-card">
+          <h3>{{ KivalasztottKutya.name }} adatai</h3>
+          
+          <p class="dog-meta">
+            <strong>Nem:</strong> {{ KivalasztottKutya.gender || 'Nincs megadva' }} | 
+            <strong>{{ getAgeDisplay(KivalasztottKutya) }}</strong>
+          </p>
+
+          <!-- Piros kiemelés a séta korlátozásokra (Walking Restrictions) -->
+          <div v-if="KivalasztottKutya.walking_restrictions" class="restriction-box">
+            <strong>⚠️ Séta korlátozás / Figyelem:</strong>
+            <p>{{ KivalasztottKutya.walking_restrictions }}</p>
+          </div>
+
+          <!-- Speciális megjegyzések (Special Notes) -->
+          <div v-if="KivalasztottKutya.special_notes" class="notes-box">
+            <strong>Megjegyzések:</strong>
+            <p>{{ KivalasztottKutya.special_notes }}</p>
+          </div>
+        </div>
+
         <p>Add meg az önkéntes nevét:</p>
         
         <input 
@@ -544,5 +583,55 @@ async function handleLogout() {
 }
 .confirm-btn:hover {
   background-color: #7a624f;
+}
+
+.dog-info-card {
+  background-color: #f8f9fa;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 15px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.dog-info-card h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.dog-meta {
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 12px;
+}
+
+/* Piros kiemelés a walking restrictions-nek */
+.restriction-box {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.restriction-box p {
+  margin: 4px 0 0 0;
+  font-weight: 500;
+}
+
+/* Normál megjegyzés doboz */
+.notes-box {
+  background-color: #e2e3e5;
+  border: 1px solid #d6d8db;
+  color: #383d41;
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+
+.notes-box p {
+  margin: 4px 0 0 0;
 }
 </style>
