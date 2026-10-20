@@ -217,14 +217,14 @@ function alaphelyzet() {
             <option :value="5">5. szintű tapasztalat</option>
           </select>
 
-          <div>
+          <div class="full-width">
             <label class="small-label">Születési idő:</label>
             <input type="date" v-model="ujKutya.birthday" class="admin-input" />
           </div>
 
           <input type="number" v-model="ujKutya.age_years" placeholder="Vagy életkor (év)" class="admin-input" />
 
-          <div>
+          <div class="full-width">
             <label class="small-label">Bekerülés dátuma:</label>
             <input type="date" v-model="ujKutya.intake_date" class="admin-input" />
           </div>
@@ -437,5 +437,11 @@ function alaphelyzet() {
 
 .save-btn:hover {
   background-color: #7a624f;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+  width: 100%;
+  box-sizing: border-box;
 }
 </style>
