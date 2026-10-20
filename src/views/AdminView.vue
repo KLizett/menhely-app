@@ -217,16 +217,19 @@ function alaphelyzet() {
             <option :value="5">5. szintű tapasztalat</option>
           </select>
 
-          <div class="full-width">
+          <!-- Születési idő -->
+          <div style="width: 100%; box-sizing: border-box;">
             <label class="small-label">Születési idő:</label>
-            <input type="date" v-model="ujKutya.birthday" class="admin-input" />
+            <input type="date" v-model="ujKutya.birthday" class="admin-input" style="width: 100%; box-sizing: border-box;" />
           </div>
 
-          <input type="number" v-model="ujKutya.age_years" placeholder="Vagy életkor (év)" class="admin-input" />
+          <!-- Életkor mező -->
+          <input type="number" v-model="ujKutya.age_years" placeholder="Vagy életkor (év)" class="admin-input" style="width: 100%; box-sizing: border-box;" />
 
-          <div class="full-width">
+          <!-- Bekerülés dátuma -->
+          <div style="width: 100%; box-sizing: border-box;">
             <label class="small-label">Bekerülés dátuma:</label>
-            <input type="date" v-model="ujKutya.intake_date" class="admin-input" />
+            <input type="date" v-model="ujKutya.intake_data" class="admin-input" style="width: 100%; box-sizing: border-box;" />
           </div>
 
           <div class="checkbox-container">
