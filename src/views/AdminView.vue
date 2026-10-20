@@ -276,24 +276,166 @@ function alaphelyzet() {
 </template>
 
 <style scoped>
-.admin-bg { background-color: #ede8d6; min-height: 100vh; padding: 20px; }
-.top-header { display: flex; justify-content: space-between; align-items: center; background-color: #957a64; color: #ede8d6; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; }
-.back-link { color: #ede8d6; text-decoration: underline; font-weight: bold; }
-.admin-container { display: flex; flex-direction: column; gap: 20px; }
-.tab-selector { display: flex; gap: 15px; }
-.tab-btn { flex: 1; padding: 12px; background-color: #d6ccb5; border: 2px solid #957a64; border-radius: 10px; font-weight: bold; cursor: pointer; color: #555; }
-.tab-btn.active { background-color: #957a64; color: #ede8d6; }
-.card { background-color: white; border: 2px solid #957a64; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-.sub-card { display: flex; flex-direction: column; gap: 10px; }
-.action-selector { display: flex; gap: 20px; font-weight: bold; color: #444; }
-.select-target { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 15px; margin-top: 15px; }
-.admin-input, .admin-textarea { padding: 10px; border: 1px solid #957a64; border-radius: 8px; background-color: #faf8f5; outline: none; width: 100%; box-sizing: border-box; }
-.admin-textarea { grid-column: span 2; height: 65px; resize: none; }
-.small-label { font-size: 12px; color: #666; margin-bottom: 3px; display: block; }
-.full-width { grid-column: span 2; }
-.mt-2 { margin-top: 8px; }
-.checkbox-container { display: flex; align-items: center; gap: 8px; font-weight: 500; }
-.save-btn { background-color: #957a64; color: #ede8d6; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; }
-.save-btn:hover { background-color: #7a624f; }
+.admin-bg {
+  background-color: #ede8d6;
+  min-height: 100vh;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+.top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #957a64;
+  color: #ede8d6;
+  padding: 12px 15px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.back-link {
+  color: #ede8d6;
+  text-decoration: underline;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.admin-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.tab-selector {
+  display: flex;
+  gap: 10px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 8px;
+  background-color: #d6ccb5;
+  border: 2px solid #957a64;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #555;
+  font-size: 13px;
+  text-align: center;
+}
+
+.tab-btn.active {
+  background-color: #957a64;
+  color: #ede8d6;
+}
+
+.card {
+  background-color: white;
+  border: 2px solid #957a64;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.sub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.action-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-weight: bold;
+  color: #444;
+  font-size: 14px;
+}
+
+.select-target {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+/* Mobilon egyoszlopos, szélesebb képernyőn kétoszlopos elrendezés */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (min-width: 500px) {
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.admin-input, .admin-textarea {
+  padding: 10px;
+  border: 1px solid #957a64;
+  border-radius: 8px;
+  background-color: #faf8f5;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+.admin-textarea {
+  grid-column: 1 / -1;
+  height: 70px;
+  resize: none;
+}
+
+.small-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 3px;
+  display: block;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.mt-2 {
+  margin-top: 8px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  grid-column: 1 / -1;
+}
+
+.save-btn {
+  background-color: #957a64;
+  color: #ede8d6;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.save-btn:hover {
+  background-color: #7a624f;
+}
 </style>
