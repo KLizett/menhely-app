@@ -364,21 +364,15 @@ function alaphelyzet() {
   margin-top: 10px;
 }
 
-/* Mobilon egyoszlopos, szélesebb képernyőn kétoszlopos elrendezés */
+/* Mobilon szigorúan 1 oszlopos, minden elem teljes szélességű */
 .form-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   margin-top: 15px;
   margin-bottom: 15px;
   width: 100%;
   box-sizing: border-box;
-}
-
-@media (min-width: 500px) {
-  .form-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 .admin-input, .admin-textarea {
@@ -388,12 +382,12 @@ function alaphelyzet() {
   background-color: #faf8f5;
   outline: none;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   font-size: 14px;
 }
 
 .admin-textarea {
-  grid-column: 1 / -1;
   height: 70px;
   resize: none;
 }
@@ -406,7 +400,8 @@ function alaphelyzet() {
 }
 
 .full-width {
-  grid-column: 1 / -1;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .mt-2 {
@@ -419,7 +414,7 @@ function alaphelyzet() {
   gap: 8px;
   font-weight: 500;
   font-size: 14px;
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .save-btn {
@@ -437,11 +432,5 @@ function alaphelyzet() {
 
 .save-btn:hover {
   background-color: #7a624f;
-}
-
-.full-width {
-  grid-column: 1 / -1;
-  width: 100%;
-  box-sizing: border-box;
 }
 </style>
