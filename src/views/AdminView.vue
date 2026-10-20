@@ -229,7 +229,7 @@ function alaphelyzet() {
           <!-- Bekerülés dátuma -->
           <div style="width: 100%; box-sizing: border-box;">
             <label class="small-label">Bekerülés dátuma:</label>
-            <input type="date" v-model="ujKutya.intake_data" class="admin-input" style="width: 100%; box-sizing: border-box;" />
+            <input type="date" v-model="ujKutya.intake_date" class="admin-input" style="width: 100%; box-sizing: border-box;" />
           </div>
 
           <div class="checkbox-container">
