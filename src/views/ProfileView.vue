@@ -1,3 +1,55 @@
+<template>
+  <div class="page-bg">
+    <!-- Működő, teljes szélességű fejléc a WalkView alapján -->
+    <header class="top-header">
+      <div class="menu-wrapper">
+        <button class="icon-btn" @click="toggleMainMenu">☰</button>
+        
+        <div v-if="isMainMenuOpen" class="dropdown-menu left-menu">
+          <router-link to="/home" class="menu-item">Kutyáink</router-link>
+          <router-link to="/walk" class="menu-item">Séta rögzítése</router-link>
+          <router-link to="/stat" class="menu-item">Statisztikák</router-link>
+          <router-link to="/admin" class="menu-item">Admin felület</router-link>
+        </div>
+      </div>
+
+      <h1 class="page-title">Személyes adatok</h1>
+
+      <div class="menu-wrapper">
+        <button class="icon-btn" @click="toggleProfileMenu">👤</button>
+        
+        <div v-if="isProfileMenuOpen" class="dropdown-menu right-menu">
+          <router-link to="/profile" class="menu-item">Személyes adatok</router-link>
+          <button class="menu-item logout-btn" @click="handleLogout">Kijelentkezés</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Profil kártya a pontos elrendezéssel -->
+    <main class="content-container">
+      <div class="card profile-card">
+        <div class="avatar-container">
+          <div class="avatar-circle">
+            <span class="avatar-icon">🛠️</span>
+          </div>
+        </div>
+
+        <h2 class="profile-name">{{ workerData.name || 'Ismeretlen felhasználó' }}</h2>
+
+
+        <hr class="divider" />
+
+        <div class="info-row">
+          <span class="info-label">Szerepkör:</span>
+          <span class="info-value"><strong>{{ workerData.role || '-' }}</strong></span>
+        </div>
+
+
+      </div>
+    </main>
+  </div>
+</template>
+
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '../supabase'
@@ -24,102 +76,72 @@ function handleClickOutside() {
   isProfileMenuOpen.value = false
 }
 
-// Dolgozó / Admin adatok a Supabase workers táblájából
-const dolgozoAdatok = ref({
-  full_name: 'Betöltés...',
-  role: 'Dolgozó / Admin'
+const workerData = ref({
+  name: '',
+  role: '',
+  permissions: ''
 })
 
-async function dolgozoLekerese() {
-  // Példaként lekérjük az első dolgozót a workers táblából (később ez a bejelentkezett user ID-ja lesz)
-  const { data, error } = await supabase
-    .from('workers')
-    .select('*')
-    .limit(1)
-    .single()
+async function loadProfile() {
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError) throw authError
 
-  if (data) {
-    dolgozoAdatok.value = data
-  } else {
-    // Ha üres a tábla, írjunk ki egy alapértelmezettet
-    dolgozoAdatok.value = {
-      full_name: 'Menhelyi Dolgozó',
-      role: 'Adminisztrátor'
+    if (user) {
+      // Lekérdezés e-mail alapján
+      let { data, error } = await supabase
+        .from('workers')
+        .select('*')
+        .eq('email', user.email)
+        .maybeSingle()
+
+      // Ha e-mail alapján nem lenne meg, próbáljuk ID alapján
+      if (!data) {
+        const res = await supabase
+          .from('workers')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle()
+        data = res.data
+      }
+
+      if (data) {
+        workerData.value = {
+          name: data.name || data.full_name || data.nev || '',
+          role: data.role || data.szerepkor || 'Dolgozó',
+          permissions: data.permissions || data.jogosultsag || 'Séták rögzítése'
+        }
+      }
     }
+  } catch (err) {
+    console.error('Hiba a profil betöltésekor:', err.message)
   }
 }
 
+async function handleLogout() {
+  await supabase.auth.signOut()
+  router.push('/')
+}
+
 onMounted(() => {
-  dolgozoLekerese()
+  loadProfile()
   window.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
   window.removeEventListener('click', handleClickOutside)
 })
-
-async function handleLogout() {
-  await supabase.auth.signOut() // Elfelejti a bejelentkezett felhasználót
-  router.push('/')             // Visszadob a LoginView-ra
-}
 </script>
-
-<template>
-  <div class="page-bg">
-    <!-- Fejléc -->
-    <header class="top-header">
-      <div class="menu-wrapper">
-        <button class="icon-btn" @click="toggleMainMenu">☰</button>
-        
-        <div v-if="isMainMenuOpen" class="dropdown-menu left-menu">
-          <router-link to="/home" class="menu-item">Kutyáink</router-link>
-          <router-link to="/walk" class="menu-item">Séta rögzítése</router-link>
-          <router-link to="/stat" class="menu-item">Statisztikák</router-link>
-          <router-link to="/admin" class="menu-item">Admin felület</router-link>
-        </div>
-      </div>
-
-      <h1 class="page-title">Személyes adatok</h1>
-
-      <div class="menu-wrapper">
-        <button class="icon-btn" @click="toggleProfileMenu">👤</button>
-        
-        <div v-if="isProfileMenuOpen" class="dropdown-menu right-menu">
-          <router-link to="/profile" class="menu-item">Személyes adatok</router-link>
-          <button class="menu-item logout-btn" @click="handleLogout">Kijelentkezés</button>
-        </div>
-      </div>
-    </header>
-
-    <!-- Tartalom -->
-    <main class="content-container">
-      <div class="profile-card">
-        <div class="profile-avatar">🛠️</div>
-        <h2>{{ dolgozoAdatok.full_name || dolgozoAdatok.name }}</h2>
-        <p class="role-badge">Menhelyi Dolgozó / Admin</p>
-
-        <div class="profile-details">
-          <div class="detail-row">
-            <span>Szerepkör:</span>
-            <strong>Adminisztrátor</strong>
-          </div>
-          <div class="detail-row">
-            <span>Jogosultság:</span>
-            <strong>Séták rögzítése és jóváhagyása</strong>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
-</template>
 
 <style scoped>
 .page-bg {
   background-color: #ede8d6;
   min-height: 100vh;
   padding: 20px;
+  box-sizing: border-box;
 }
 
+/* Teljesen azonos fejléc stílus a WalkView-val */
 .top-header {
   display: flex;
   justify-content: space-between;
@@ -128,7 +150,7 @@ async function handleLogout() {
   color: #ede8d6;
   padding: 12px 20px;
   border-radius: 12px;
-  margin-bottom: 30px;
+  margin-bottom: 25px;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
@@ -191,7 +213,8 @@ async function handleLogout() {
 
 .content-container {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
 }
 
 .profile-card {
@@ -200,46 +223,63 @@ async function handleLogout() {
   border-radius: 16px;
   padding: 30px;
   width: 100%;
-  max-width: 400px;
+  max-width: 450px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  box-sizing: border-box;
   text-align: center;
-  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
 }
 
-.profile-avatar {
-  font-size: 40px;
-  background-color: #fcf9f0;
-  border: 2px solid #957a64;
-  width: 90px;
-  height: 90px;
-  line-height: 90px;
-  border-radius: 50%;
-  margin: 0 auto 15px auto;
-}
-
-.profile-card h2 {
-  color: #957a64;
-  margin: 0 0 5px 0;
-}
-
-.role-badge {
-  color: #b8860b;
-  font-weight: bold;
-  font-size: 14px;
-  margin-bottom: 25px;
-}
-
-.profile-details {
-  border-top: 1px solid #e0d8c3;
-  padding-top: 20px;
+.avatar-container {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  justify-content: center;
+  margin-bottom: 15px;
 }
 
-.detail-row {
+.avatar-circle {
+  width: 75px;
+  height: 75px;
+  border: 2px solid #957a64;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #faf8f5;
+}
+
+.avatar-icon {
+  font-size: 32px;
+}
+
+.profile-name {
+  font-size: 22px;
+  font-weight: bold;
+  color: #7a624f;
+  margin: 5px 0;
+}
+
+.profile-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #b08d57;
+  margin-bottom: 20px;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid #e0d6c3;
+  margin: 20px 0;
+}
+
+.info-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  margin: 14px 0;
   font-size: 15px;
   color: #444;
+}
+
+.info-label {
+  color: #666;
 }
 </style>
