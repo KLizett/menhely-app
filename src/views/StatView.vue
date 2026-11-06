@@ -102,18 +102,39 @@ const statistics = computed(() => ({
   allEvents: uniqueEvents(walks.value),
   durationMinutes: weeklyDuration.value
 }))
-const details = computed(() => {
-  if (selectedDetail.value === 'today') return todayRows.value
-  if (selectedDetail.value === 'week') return weeklyRows.value
-  if (selectedDetail.value === 'active') return activeRows.value
-  return []
-})
-const detailTitle = computed(() => selectedDetail.value === 'today' ? 'Mai séták – kutyánként' : selectedDetail.value === 'week' ? 'Heti séták – kutyánként' : 'Jelenleg aktív séták')
-const sortedDetails = computed(() => [...details.value].sort((a, b) => new Date(b.start_time) - new Date(a.start_time)))
+// A részletes táblák egy kutyát egy sorban mutatnak, nem minden séta külön sort kap.
+const detailTitle = computed(() => selectedDetail.value === 'today' ? 'Ma sétáltatott kutyák' : selectedDetail.value === 'week' ? 'Heti sétáltatott kutyák' : 'Jelenleg aktív séták')
+function groupByDog(rows) {
+  const groups = new Map()
+  for (const row of rows) {
+    const key = String(row.dog_id)
+    if (!groups.has(key)) groups.set(key, { id:key, name:dogName(row), rows:[] })
+    groups.get(key).rows.push(row)
+  }
+  return [...groups.values()].sort((a,b) => a.name.localeCompare(b.name,'hu'))
+}
+function uniqueDates(rows) {
+  const dates = new Map()
+  for (const row of rows) {
+    if (!row.start_time) continue
+    const localKey = new Date(row.start_time).toLocaleDateString('sv-SE')
+    dates.set(localKey, dateText(row.start_time))
+  }
+  return [...dates.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(entry=>entry[1]).join(', ')
+}
+const todayDetailRows = computed(() => groupByDog(todayRows.value).map(g => {
+  const completed = g.rows.filter(w => w.end_time)
+  const total = completed.reduce((sum, w) => sum + (minutes(w) || 0), 0)
+  return { ...g, duration: completed.length ? `${total} perc` : 'Folyamatban' }
+}))
+const weekDetailRows = computed(() => groupByDog(weeklyRows.value).map(g => ({
+  ...g, count: g.rows.length, dates: uniqueDates(g.rows)
+})))
+const activeDetailRows = computed(() => [...activeRows.value].sort((a,b) => new Date(b.start_time) - new Date(a.start_time)))
 const weeklyDogRows = computed(() => {
   return eligibleDogs.value.map(dog => {
     const rows = completedWeekly.value.filter(w => String(w.dog_id) === String(dog.id))
-    return { dog, count: rows.length, minutes: rows.reduce((sum, w) => sum + (minutes(w) || 0), 0) }
+    return { dog, count: rows.length, dates: uniqueDates(rows) }
   }).sort((a,b) => a.count - b.count || (a.dog.name || '').localeCompare(b.dog.name || '', 'hu'))
 })
 const weekDays = computed(() => Array.from({ length: 7 }, (_, idx) => {
@@ -184,16 +205,29 @@ onUnmounted(() => window.removeEventListener('click', handleClickOutside))
       </section>
       <section class="panel"><h3>A hét napjai</h3><div class="weekday-grid"><div v-for="day in weekDays" :key="day.label" class="day-item"><strong>{{ day.label }}</strong><span>{{ day.dogs }} kutya</span><small>{{ day.events }} séta</small></div></div></section>
       <section class="panel"><h3>Kutyánkénti heti teljesítés</h3><p class="muted">A heti sétaszám a lezárt sétarészvételek számát jelenti.</p>
-        <div class="scroll-table"><table><thead><tr><th>Kutya</th><th>Kennel</th><th>Lezárt séták</th><th>Időtartam</th></tr></thead>
-          <tbody><tr v-for="entry in weeklyDogRows" :key="entry.dog.id"><td>{{ entry.dog.name }}</td><td>{{ entry.dog.kennel || '–' }}</td><td>{{ entry.count }}</td><td>{{ entry.minutes }} perc</td></tr></tbody></table></div>
+        <div class="scroll-table"><table><thead><tr><th>Kutya</th><th>Lezárt séták</th><th>Dátum(ok)</th></tr></thead>
+          <tbody><tr v-for="entry in weeklyDogRows" :key="entry.dog.id"><td>{{ entry.dog.name }}</td><td>{{ entry.count }}</td><td class="dates-cell">{{ entry.dates || '–' }}</td></tr></tbody></table></div>
       </section>
     </main>
     <div v-if="selectedDetail" class="modal-overlay" role="dialog" aria-modal="true" :aria-label="detailTitle">
       <div class="modal-content detail-modal"><div class="detail-header"><h3>{{ detailTitle }}</h3><button class="close-btn" @click="selectedDetail = null">✕</button></div>
-        <p class="muted">Egy sor egy kutya részvétele. A kenneltársak közös sétája több sort, de egy sétaeseményt jelent.</p>
-        <div class="scroll-table"><table><thead><tr><th>Kutya</th><th>Kennel</th><th>Önkéntes</th><th>Dátum</th><th>Kezdés</th><th>Befejezés</th><th>Időtartam</th></tr></thead>
-          <tbody><tr v-for="row in sortedDetails" :key="row.id"><td>{{ dogName(row) }}</td><td>{{ dogKennel(row) }}</td><td>{{ dogVolunteer(row) }}</td><td>{{ dateText(row.start_time) }}</td><td>{{ timeText(row.start_time) }}</td><td>{{ timeText(row.end_time) }}</td><td>{{ durationText(row) }}</td></tr>
-            <tr v-if="!sortedDetails.length"><td colspan="7">Nincs megjeleníthető séta.</td></tr></tbody></table></div>
+        <div v-if="selectedDetail === 'active'" class="scroll-table">
+          <table><thead><tr><th>Kutya</th><th>Dátum</th><th>Kezdés</th></tr></thead>
+            <tbody><tr v-for="row in activeDetailRows" :key="row.id"><td>{{ dogName(row) }}</td><td>{{ dateText(row.start_time) }}</td><td>{{ timeText(row.start_time) }}</td></tr>
+              <tr v-if="!activeDetailRows.length"><td colspan="3">Jelenleg nincs aktív séta.</td></tr></tbody></table>
+        </div>
+        <div v-else-if="selectedDetail === 'today'" class="scroll-table">
+          <table><thead><tr><th>Kutya</th><th>Összesített időtartam</th></tr></thead>
+            <tbody><tr v-for="row in todayDetailRows" :key="row.id"><td>{{ row.name }}</td><td>{{ row.duration }}</td></tr>
+              <tr v-if="!todayDetailRows.length"><td colspan="2">Ma még nincs rögzített séta.</td></tr></tbody></table>
+          <p class="muted">Az időtartam az adott kutya mai, lezárt sétáinak összegét mutatja. Folyamatban lévő sétát nem számolunk bele.</p>
+        </div>
+        <div v-else-if="selectedDetail === 'week'" class="scroll-table">
+          <table><thead><tr><th>Kutya</th><th>Séták száma</th><th>Dátum(ok)</th></tr></thead>
+            <tbody><tr v-for="row in weekDetailRows" :key="row.id"><td>{{ row.name }}</td><td>{{ row.count }}</td><td class="dates-cell">{{ row.dates }}</td></tr>
+              <tr v-if="!weekDetailRows.length"><td colspan="3">Ezen a héten még nincs rögzített séta.</td></tr></tbody></table>
+          <p class="muted">A lista a héten elkezdett sétákat tartalmazza. Egy kutya több séta esetén is egy sorban szerepel.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -244,4 +278,10 @@ table { width:100%; border-collapse:collapse; font-size:13px; } th,td { text-ali
   .detail-modal { max-height:calc(100dvh - 24px); padding:12px; }
 }
 @media (max-width:360px) { .stats-grid { grid-template-columns: 1fr; } }
+</style>
+
+<style scoped>
+.dates-cell { white-space:normal;min-width:135px;line-height:1.5; }
+.detail-modal {width:min(650px,100%);}
+@media(max-width:600px) { .detail-modal table {font-size:12px;} .detail-modal th,.detail-modal td {padding:9px 7px;} }
 </style>

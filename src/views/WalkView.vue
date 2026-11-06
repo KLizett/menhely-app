@@ -24,6 +24,7 @@ const onkentesNev = ref('')
 const onkentesSzint = ref('')
 const kenneltarsValasztas = ref([])
 const nyitottKenneltarsAdatlapok = ref([])
+const eredetiKutyaAdatlapNyitva = ref(false)
 const showCloseModal = ref(false)
 const kivalasztottSetaCsoport = ref(null)
 const walkNoteText = ref('')
@@ -139,6 +140,7 @@ function setaInditasModal(kutya) {
   KivalasztottKutya.value = kutya
   kenneltarsValasztas.value = []
   nyitottKenneltarsAdatlapok.value = []
+  eredetiKutyaAdatlapNyitva.value = false
   onkentesNev.value = ''
   onkentesSzint.value = ''
   showModal.value = true
@@ -371,15 +373,30 @@ onUnmounted(() => window.removeEventListener('click', handleClickOutside))
     <div v-if="showModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Séta indítása">
       <div class="modal-content enlarged-modal">
         <h3>Séta indítása: {{ KivalasztottKutya?.name }}</h3>
-        <div v-if="KivalasztottKutya" class="dog-info-card">
-          <p><strong>Kennel:</strong> {{ kennelFelirat(KivalasztottKutya) }}</p>
-          <p><strong>Nem:</strong> {{ KivalasztottKutya.gender || 'Nincs megadva' }} · {{ getAgeDisplay(KivalasztottKutya) }}</p>
-          <p><strong>Méret:</strong> {{ KivalasztottKutya.size || 'Nincs megadva' }} · <strong>Szükséges szint:</strong> {{ KivalasztottKutya.experience_required }}</p>
-          <div v-if="KivalasztottKutya.walking_restrictions" class="restriction-box"><strong>⚠️ Korlátozás:</strong> {{ KivalasztottKutya.walking_restrictions }}</div>
-          <div v-if="KivalasztottKutya.special_notes" class="notes-box"><strong>Megjegyzés:</strong> {{ KivalasztottKutya.special_notes }}</div>
+        <div v-if="KivalasztottKutya" class="dog-info-card primary-dog-card">
+          <div class="mate-card-header">
+            <div class="mate-summary">
+              <strong>{{ KivalasztottKutya.name }}</strong>
+              <small>{{ kennelFelirat(KivalasztottKutya) }} · {{ KivalasztottKutya.size || 'Ismeretlen méret' }} · {{ KivalasztottKutya.experience_required || 1 }}. tapasztalati szint</small>
+              <small>{{ getKutyaHetiStatus(KivalasztottKutya) }}</small>
+            </div>
+            <button type="button" class="mate-details-button" :aria-expanded="eredetiKutyaAdatlapNyitva"
+              @click="eredetiKutyaAdatlapNyitva = !eredetiKutyaAdatlapNyitva">
+              {{ eredetiKutyaAdatlapNyitva ? 'Bezár ▲' : 'Adatok ▼' }}
+            </button>
+          </div>
+          <div v-if="KivalasztottKutya.walking_restrictions" class="mate-quick-warning"><strong>⚠️ Korlátozás:</strong> {{ KivalasztottKutya.walking_restrictions }}</div>
+          <div v-if="eredetiKutyaAdatlapNyitva" class="mate-details">
+            <p><strong>Nem:</strong> {{ KivalasztottKutya.gender || 'Nincs megadva' }} · {{ getAgeDisplay(KivalasztottKutya) }}</p>
+            <p><strong>Méret:</strong> {{ KivalasztottKutya.size || 'Nincs megadva' }}</p>
+            <p><strong>Szükséges tapasztalati szint:</strong> {{ KivalasztottKutya.experience_required || 1 }}</p>
+            <div v-if="KivalasztottKutya.special_notes" class="notes-box"><strong>Megjegyzés:</strong> {{ KivalasztottKutya.special_notes }}</div>
+            <p v-if="!KivalasztottKutya.special_notes && !KivalasztottKutya.walking_restrictions" class="small-hint">Nincs további korlátozás vagy megjegyzés rögzítve.</p>
+          </div>
         </div>
         <div v-if="kijeloltKenneltarsak.length" class="mates-box">
           <h4>🐕 Ugyanebben a kennelben élnek</h4>
+          <p>Jelöld ki a közös sétához a megfelelő kutyákat. A korlátozások mindig látszanak; az „Adatok” gombbal a részletes adatlap is megnyitható.</p>
           <div v-for="kutya in kijeloltKenneltarsak" :key="kutya.id" class="mate-card" :class="{ 'mate-card-disabled': !kenneltarsValaszthato(kutya) }">
             <div class="mate-card-header">
               <label class="mate-select">
@@ -424,6 +441,7 @@ onUnmounted(() => window.removeEventListener('click', handleClickOutside))
         <label class="form-label">Új önkéntes tapasztalati szintje (csak új személy esetén)
           <select v-model="onkentesSzint" class="modal-input"><option value="">Meglévő önkéntesnél automatikus</option><option v-for="level in [1,2,3,4,5]" :key="level" :value="String(level)">{{ level }}. szint</option></select>
         </label>
+        <p class="small-hint">A közös séta azonos időponttal indul, és egy művelettel lezárható. Az önkéntes besorolását a rendszer ellenőrzi.</p>
         <div class="modal-buttons"><button class="action-btn cancel-btn" :disabled="mentFolyamatban" @click="showModal = false">Mégsem</button><button class="action-btn confirm-btn" :disabled="mentFolyamatban" @click="setaMentese">{{ mentFolyamatban ? 'Mentés…' : 'Séta indítása' }}</button></div>
       </div>
     </div>
@@ -845,4 +863,11 @@ onUnmounted(() => window.removeEventListener('click', handleClickOutside))
   .mate-card-header { flex-wrap:wrap; }
   .mate-details-button { margin-left:27px; }
 }
+</style>
+
+<style scoped>
+.primary-dog-card {text-align:left;background:#fff;border-color:#d6c5b5;}
+.primary-dog-card .mate-summary small {display:block;margin-top:4px;color:#6c5d52;font-size:12px;}
+.primary-dog-card .mate-card-header {align-items:center;}
+.primary-dog-card .mate-details-button {margin:0;}
 </style>

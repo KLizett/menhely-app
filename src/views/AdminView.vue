@@ -45,7 +45,10 @@ const ujDolgozo = ref({
 })
 
 // Képfeltöltéshez ideiglenes fájl
-const kepFájl = ref(null)
+const kepFeltoltesFolyamatban = ref(false)
+const kepHiba = ref('')
+const kepSiker = ref('')
+const kepInputKey = ref(0)
 
 // Adatok betöltése
 async function adatokLekerese() {
@@ -64,6 +67,8 @@ onMounted(() => {
 function kutyaKivalasztva(event) {
   const id = event.target.value
   kivalasztottKutyaId.value = id
+  kepHiba.value = ''
+  kepSiker.value = ''
   const talalt = kutyak.value.find(k => k.id == id)
   if (talalt) {
     // Másolatot készítünk, hogy ne rontsa el azonnal a listát gépelés közben
@@ -82,26 +87,60 @@ function dolgozoKivalasztva(event) {
 }
 
 // Kép feltöltése a Supabase Storage-ba (vagy link kezelése)
+// A kiválasztott képet egyedi fájlnévvel töltjük fel (nincs gyorsítótárazott régi kép).
+// Meglévő kutya esetén a képhivatkozást azonnal elmentjük a kutya rekordjához is.
 async function kepFeltoltes(event) {
-  const file = event.target.files[0]
+  const file = event.target.files?.[0]
   if (!file) return
-
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${Math.random()}.${fileExt}`
-  const filePath = `dog-images/${fileName}`
-
-  // Megjegyzés: Szükséges, hogy legyen egy 'dog-photos' nevű nyilvános bucket a Supabase Storage-ban!
-  const { error: uploadError } = await supabase.storage.from('dog-photos').upload(filePath, file)
-
-  if (uploadError) {
-    alert('Hiba a kép feltöltésekor: ' + uploadError.message)
+  kepHiba.value = ''
+  kepSiker.value = ''
+  if (!file.type.startsWith('image/')) {
+    kepHiba.value = 'Csak képfájlt válassz (JPG, PNG, WEBP).'
     return
   }
+  if (file.size > 5 * 1024 * 1024) {
+    kepHiba.value = 'A kép legfeljebb 5 MB lehet.'
+    return
+  }
+  kepFeltoltesFolyamatban.value = true
+  try {
+    const allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+    const ext = (file.name.split('.').pop() || '').toLowerCase()
+    if (!allowed.includes(ext)) throw new Error('Nem támogatott képformátum. JPG, PNG vagy WEBP ajánlott.')
+    const unique = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const path = `dog-images/${unique}.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('dog-photos').upload(path, file, { contentType: file.type, upsert: false })
+    if (uploadError) throw new Error('A fájl feltöltése sikertelen: ' + uploadError.message)
+    const { data } = supabase.storage.from('dog-photos').getPublicUrl(path)
+    if (!data?.publicUrl) throw new Error('Nem sikerült lekérni a kép nyilvános címét.')
+    const newUrl = data.publicUrl
 
-  // Nyilvános URL lekérése
-  const { data } = supabase.storage.from('dog-photos').getPublicUrl(filePath)
-  ujKutya.value.image_url = data.publicUrl
-  alert('Kép sikeresen feltöltve!')
+    if (muveletTipus.value === 'update') {
+      if (!kivalasztottKutyaId.value) {
+        throw new Error('A kép cseréje előtt válassz ki egy meglévő kutyát!')
+      }
+      const { data: updated, error: saveError } = await supabase.from('dogs')
+        .update({ image_url: newUrl })
+        .eq('id', kivalasztottKutyaId.value)
+        .select('id, image_url')
+        .single()
+      if (saveError) throw new Error('A kép feltöltődött, de a kutya adatlapján nem sikerült elmenteni: ' + saveError.message)
+      if (!updated) throw new Error('Nem érkezett vissza frissített kutyarekord. Ellenőrizd a jogosultságokat (RLS).')
+      kutyak.value = kutyak.value.map(k => String(k.id) === String(kivalasztottKutyaId.value) ? { ...k, image_url: newUrl } : k)
+      kepSiker.value = 'A kép feltöltve és a kiválasztott kutyához mentve. A többi adat módosításához használd a Mentés gombot.'
+    } else {
+      kepSiker.value = 'A kép feltöltve. Új kutyánál a Kutya mentése gombbal rögzítsd az adatlapot is.'
+    }
+    ujKutya.value.image_url = newUrl
+  } catch (error) {
+    kepHiba.value = error?.message || String(error)
+  } finally {
+    kepFeltoltesFolyamatban.value = false
+    kepInputKey.value += 1 // Ugyanaz a fájl is újra kiválasztható
+  }
 }
 
 function kutyaMentendoAdatok() {
@@ -119,6 +158,7 @@ function dolgozoMentendoAdatok() {
 }
 // Mentés (Insert vagy Update)
 async function mentoFuggveny() {
+  if (kepFeltoltesFolyamatban.value) return alert('Várd meg a kép feltöltésének végét!')
   if (aktivTab.value === 'dogs') {
     if (!ujKutya.value.name) {
       alert('A kutya neve kötelező!')
@@ -155,6 +195,9 @@ async function mentoFuggveny() {
 }
 
 function alaphelyzet() {
+  kepHiba.value = ''
+  kepSiker.value = ''
+  kepInputKey.value += 1
   kivalasztottKutyaId.value = null
   kivalasztottDolgozoId.value = null
   ujKutya.value = { name: '', gender: '', experience_required: 1, birthday: '', age_years: null, walking_restrictions: '', special_notes: '', breed: '', size: '', active_flag: true, intake_date: '', image_url: '', kennel: '', is_walkable: true, non_walkable_reason: '' }
@@ -263,15 +306,23 @@ function alaphelyzet() {
           <!-- Képfeltöltés -->
           <div class="full-width">
             <label class="small-label">Kutya fotója (Fájl feltöltése vagy URL):</label>
-            <input type="file" @change="kepFeltoltes" class="admin-input" />
-            <input type="text" v-model="ujKutya.image_url" placeholder="Vagy illeszd be a kép URL-jét..." class="admin-input mt-2" />
+            <input :key="kepInputKey" type="file" accept="image/jpeg,image/png,image/webp,image/gif" :disabled="kepFeltoltesFolyamatban || (muveletTipus === 'update' && !kivalasztottKutyaId)" @change="kepFeltoltes" class="admin-input" />
+            <p v-if="kepFeltoltesFolyamatban" class="photo-status" role="status">Kép feltöltése folyamatban…</p>
+            <p v-if="kepHiba" class="photo-error" role="alert">{{ kepHiba }}</p>
+            <p v-if="kepSiker" class="photo-success" role="status">{{ kepSiker }}</p>
+            <input type="url" v-model="ujKutya.image_url" placeholder="Vagy illeszd be a kép URL-jét..." class="admin-input mt-2" />
+            <div v-if="ujKutya.image_url" class="photo-preview">
+              <img :key="ujKutya.image_url" :src="ujKutya.image_url" alt="A kiválasztott kutya fényképének előnézete" />
+              <small>Jelenlegi kép előnézete</small>
+            </div>
+            <p class="photo-hint">Meglévő kutyánál a feltöltött kép azonnal mentésre kerül. Új kutyánál az adatlapot külön mentsd el.</p>
           </div>
 
           <textarea v-model="ujKutya.walking_restrictions" placeholder="Séta korlátozások (pl. biciklinek támad)..." class="admin-textarea"></textarea>
           <textarea v-model="ujKutya.special_notes" placeholder="Speciális megjegyzések..." class="admin-textarea"></textarea>
         </div>
 
-        <button class="save-btn" @click="mentoFuggveny">
+        <button class="save-btn" :disabled="kepFeltoltesFolyamatban" @click="mentoFuggveny">
           {{ muveletTipus === 'create' ? 'Kutya mentése' : 'Módosítások mentése' }}
         </button>
       </div>
@@ -292,7 +343,7 @@ function alaphelyzet() {
           </div>
         </div>
 
-        <button class="save-btn" @click="mentoFuggveny">
+        <button class="save-btn" :disabled="kepFeltoltesFolyamatban" @click="mentoFuggveny">
           {{ muveletTipus === 'create' ? 'Dolgozó mentése' : 'Módosítások mentése' }}
         </button>
       </div>
@@ -458,4 +509,12 @@ function alaphelyzet() {
 .save-btn:hover {
   background-color: #7a624f;
 }
+</style>
+<style scoped>
+.photo-preview { display:flex; flex-direction:column; align-items:flex-start; gap:5px; margin-top:12px; }
+.photo-preview img { width:min(220px,100%); max-height:180px; object-fit:cover; border-radius:10px; border:1px solid #cdbba7; }
+.photo-status,.photo-hint {font-size:13px;color:#6d5747;}
+.photo-error {font-size:13px;color:#a52828;background:#ffebeb;padding:9px;border-radius:8px;}
+.photo-success {font-size:13px;color:#216039;background:#eaf6ec;padding:9px;border-radius:8px;}
+.save-btn:disabled {opacity:.5;cursor:wait;}
 </style>
