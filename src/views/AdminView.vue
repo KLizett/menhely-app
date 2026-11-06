@@ -122,13 +122,16 @@ async function kepFeltoltes(event) {
       if (!kivalasztottKutyaId.value) {
         throw new Error('A kép cseréje előtt válassz ki egy meglévő kutyát!')
       }
-      const { data: updated, error: saveError } = await supabase.from('dogs')
+      // A PostgREST .single() egyetlen visszaadott sor nélkül PGRST116 hibát ad.
+      // Tömböt kérünk vissza, és külön ellenőrizzük, valóban frissült-e a rekord.
+      const { data: updatedRows, error: saveError } = await supabase.from('dogs')
         .update({ image_url: newUrl })
         .eq('id', kivalasztottKutyaId.value)
         .select('id, image_url')
-        .single()
-      if (saveError) throw new Error('A kép feltöltődött, de a kutya adatlapján nem sikerült elmenteni: ' + saveError.message)
-      if (!updated) throw new Error('Nem érkezett vissza frissített kutyarekord. Ellenőrizd a jogosultságokat (RLS).')
+      if (saveError) throw new Error('A kép feltöltődött, de az adatbázis-frissítés hibázott: ' + saveError.message)
+      if (!Array.isArray(updatedRows) || updatedRows.length !== 1) {
+        throw new Error('A kép feltöltődött a tárhelyre, de a kutya rekordjának módosítása nem igazolható. Lehetséges, hogy a dogs tábla UPDATE/SELECT RLS-jogosultsága hiányzik, vagy a kutyaazonosító nem egyezik. A képhivatkozást nem állítottam be sikeresként.')
+      }
       kutyak.value = kutyak.value.map(k => String(k.id) === String(kivalasztottKutyaId.value) ? { ...k, image_url: newUrl } : k)
       kepSiker.value = 'A kép feltöltve és a kiválasztott kutyához mentve. A többi adat módosításához használd a Mentés gombot.'
     } else {
@@ -170,9 +173,14 @@ async function mentoFuggveny() {
       if (error) alert('Hiba: ' + error.message)
       else { alert('Kutya sikeresen feltöltve!'); alaphelyzet(); }
     } else {
-      const { error } = await supabase.from('dogs').update({ ...kutyaMentendoAdatok(), updated_at: new Date().toISOString() }).eq('id', kivalasztottKutyaId.value)
-      if (error) alert('Hiba: ' + error.message)
-      else { alert('Kutya adatai frissítve!'); alaphelyzet(); }
+      const { data: savedRows, error } = await supabase.from('dogs')
+        .update({ ...kutyaMentendoAdatok(), updated_at: new Date().toISOString() })
+        .eq('id', kivalasztottKutyaId.value)
+        .select('id')
+      if (error) alert('Hiba a kutya adatainak mentésekor: ' + error.message)
+      else if (!savedRows?.length) {
+        alert('Nem sikerült igazolni a kutya adatainak frissítését. Ellenőrizd a dogs tábla UPDATE/SELECT RLS-szabályait és a kutya azonosítóját.')
+      } else { alert('Kutya adatai frissítve!'); alaphelyzet(); }
     }
   } else {
     // Dolgozók mentése
@@ -283,18 +291,18 @@ function alaphelyzet() {
           <textarea v-if="!ujKutya.is_walkable" v-model="ujKutya.non_walkable_reason" placeholder="Miért nem sétáltatható?" class="admin-textarea"></textarea>
 
           <!-- Születési idő -->
-          <div style="width: 100%; box-sizing: border-box;">
+          <div class="date-field">
             <label class="small-label">Születési idő:</label>
-            <input type="date" v-model="ujKutya.birthday" class="admin-input" style="width: 100%; box-sizing: border-box;" />
+            <input type="date" v-model="ujKutya.birthday" class="admin-input" />
           </div>
 
           <!-- Életkor mező -->
-          <input type="number" v-model="ujKutya.age_years" placeholder="Vagy életkor (év)" class="admin-input" style="width: 100%; box-sizing: border-box;" />
+          <input type="number" v-model="ujKutya.age_years" placeholder="Vagy életkor (év)" class="admin-input" />
 
           <!-- Bekerülés dátuma -->
-          <div style="width: 100%; box-sizing: border-box;">
+          <div class="date-field">
             <label class="small-label">Bekerülés dátuma:</label>
-            <input type="date" v-model="ujKutya.intake_date" class="admin-input" style="width: 100%; box-sizing: border-box;" />
+            <input type="date" v-model="ujKutya.intake_date" class="admin-input" />
           </div>
 
           <div class="checkbox-container">
@@ -442,6 +450,7 @@ function alaphelyzet() {
 
 /* Mobilon szigorúan 1 oszlopos, minden elem teljes szélességű */
 .form-grid {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -459,6 +468,7 @@ function alaphelyzet() {
   outline: none;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
   font-size: 14px;
 }
@@ -466,6 +476,30 @@ function alaphelyzet() {
 .admin-textarea {
   height: 70px;
   resize: none;
+}
+
+/* iOS Safari: a natív dátumbeviteli mező nagyobb minimális szélességet
+   kaphat, mint a szülő űrlap. A flex-elemnek és az inputnak is engedjük
+   a zsugorodást, és a teljes elérhető szélességhez igazítjuk őket. */
+.date-field {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.date-field input[type="date"] {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-inline-size: 0;
+  box-sizing: border-box;
+  font-size: 16px;
+}
+@media (max-width: 600px) {
+  .admin-container, .card, .form-grid, .date-field { min-width: 0; max-width: 100%; }
+  .admin-input, .admin-textarea { min-width: 0; }
 }
 
 .small-label {
@@ -476,6 +510,7 @@ function alaphelyzet() {
 }
 
 .full-width {
+  min-width: 0;
   width: 100%;
   box-sizing: border-box;
 }
