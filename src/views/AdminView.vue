@@ -1,4 +1,5 @@
 <script setup>
+import SharedHeader from '../components/SharedHeader.vue'
 import { ref, onMounted } from 'vue'
 import { supabase } from '../supabase'
 import { useRouter } from 'vue-router'
@@ -26,7 +27,10 @@ const ujKutya = ref({
   size: '',
   active_flag: true,
   intake_date: '',
-  image_url: ''
+  image_url: '',
+  kennel: '',
+  is_walkable: true,
+  non_walkable_reason: ''
 })
 
 // --- DOLGOZÓ ADATOK ---
@@ -100,6 +104,19 @@ async function kepFeltoltes(event) {
   alert('Kép sikeresen feltöltve!')
 }
 
+function kutyaMentendoAdatok() {
+  const { name, gender, experience_required, birthday, age_years, walking_restrictions, special_notes,
+    breed, size, active_flag, intake_date, image_url, kennel, is_walkable, non_walkable_reason } = ujKutya.value
+  return { name: name?.trim(), gender: gender || null, experience_required: Number(experience_required) || 1,
+    birthday: birthday || null, age_years: age_years === '' ? null : age_years,
+    walking_restrictions, special_notes, breed, size, active_flag, intake_date: intake_date || null,
+    image_url: image_url || null, kennel: kennel || null, is_walkable,
+    non_walkable_reason: is_walkable ? null : non_walkable_reason }
+}
+function dolgozoMentendoAdatok() {
+  const { full_name, role, active_flag, phone, email } = ujDolgozo.value
+  return { full_name: full_name?.trim(), role, active_flag, phone, email }
+}
 // Mentés (Insert vagy Update)
 async function mentoFuggveny() {
   if (aktivTab.value === 'dogs') {
@@ -109,11 +126,11 @@ async function mentoFuggveny() {
     }
 
     if (muveletTipus.value === 'create') {
-      const { error } = await supabase.from('dogs').insert([ujKutya.value])
+      const { error } = await supabase.from('dogs').insert([kutyaMentendoAdatok()])
       if (error) alert('Hiba: ' + error.message)
       else { alert('Kutya sikeresen feltöltve!'); alaphelyzet(); }
     } else {
-      const { error } = await supabase.from('dogs').update({ ...ujKutya.value, updated_at: new Date().toISOString() }).eq('id', kivalasztottKutyaId.value)
+      const { error } = await supabase.from('dogs').update({ ...kutyaMentendoAdatok(), updated_at: new Date().toISOString() }).eq('id', kivalasztottKutyaId.value)
       if (error) alert('Hiba: ' + error.message)
       else { alert('Kutya adatai frissítve!'); alaphelyzet(); }
     }
@@ -125,11 +142,11 @@ async function mentoFuggveny() {
     }
 
     if (muveletTipus.value === 'create') {
-      const { error } = await supabase.from('workers').insert([ujDolgozo.value])
+      const { error } = await supabase.from('workers').insert([dolgozoMentendoAdatok()])
       if (error) alert('Hiba: ' + error.message)
       else { alert('Dolgozó sikeresen feltöltve!'); alaphelyzet(); }
     } else {
-      const { error } = await supabase.from('workers').update({ ...ujDolgozo.value, updated_at: new Date().toISOString() }).eq('id', kivalasztottDolgozoId.value)
+      const { error } = await supabase.from('workers').update({ ...dolgozoMentendoAdatok(), updated_at: new Date().toISOString() }).eq('id', kivalasztottDolgozoId.value)
       if (error) alert('Hiba: ' + error.message)
       else { alert('Dolgozó adatai frissítve!'); alaphelyzet(); }
     }
@@ -140,17 +157,14 @@ async function mentoFuggveny() {
 function alaphelyzet() {
   kivalasztottKutyaId.value = null
   kivalasztottDolgozoId.value = null
-  ujKutya.value = { name: '', gender: '', experience_required: 1, birthday: '', age_years: null, walking_restrictions: '', special_notes: '', breed: '', size: '', active_flag: true, intake_date: '', image_url: '' }
+  ujKutya.value = { name: '', gender: '', experience_required: 1, birthday: '', age_years: null, walking_restrictions: '', special_notes: '', breed: '', size: '', active_flag: true, intake_date: '', image_url: '', kennel: '', is_walkable: true, non_walkable_reason: '' }
   ujDolgozo.value = { full_name: '', role: '', active_flag: true, phone: '', email: '' }
 }
 </script>
 
 <template>
   <div class="admin-bg">
-    <header class="top-header">
-      <h1>Adminisztrációs Vezérlőpult</h1>
-      <router-link to="/walk" class="back-link">Vissza a sétákhoz</router-link>
-    </header>
+    <SharedHeader title="Adminisztráció" />
 
     <main class="admin-container">
       <!-- FŐ VÁLASZTÓ GOMBOK (Kutyák / Dolgozók) -->
@@ -217,6 +231,14 @@ function alaphelyzet() {
             <option :value="5">5. szintű tapasztalat</option>
           </select>
 
+          <label class="small-label">Kennel száma vagy azonosítója:
+            <input type="text" v-model.trim="ujKutya.kennel" placeholder="Pl. 12 vagy B/3" class="admin-input" />
+          </label>
+          <div class="checkbox-container">
+            <label><input type="checkbox" v-model="ujKutya.is_walkable" /> Jelenleg sétáltatható</label>
+          </div>
+          <textarea v-if="!ujKutya.is_walkable" v-model="ujKutya.non_walkable_reason" placeholder="Miért nem sétáltatható?" class="admin-textarea"></textarea>
+
           <!-- Születési idő -->
           <div style="width: 100%; box-sizing: border-box;">
             <label class="small-label">Születési idő:</label>
@@ -242,7 +264,7 @@ function alaphelyzet() {
           <div class="full-width">
             <label class="small-label">Kutya fotója (Fájl feltöltése vagy URL):</label>
             <input type="file" @change="kepFeltoltes" class="admin-input" />
-            <input type="textv" v-model="ujKutya.image_url" placeholder="Vagy illeszd be a kép URL-jét..." class="admin-input mt-2" />
+            <input type="text" v-model="ujKutya.image_url" placeholder="Vagy illeszd be a kép URL-jét..." class="admin-input mt-2" />
           </div>
 
           <textarea v-model="ujKutya.walking_restrictions" placeholder="Séta korlátozások (pl. biciklinek támad)..." class="admin-textarea"></textarea>
@@ -282,7 +304,7 @@ function alaphelyzet() {
 .admin-bg {
   background-color: #ede8d6;
   min-height: 100vh;
-  padding: 15px;
+  padding: 20px 12px;
   box-sizing: border-box;
 }
 

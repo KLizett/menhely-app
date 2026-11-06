@@ -1,4 +1,5 @@
 <script setup>
+import SharedHeader from '../components/SharedHeader.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '../supabase'
 import { useRouter } from 'vue-router'
@@ -59,29 +60,7 @@ async function handleLogout() {
 <template>
   <div class="page-bg">
     <!-- Sötétbarna fejléc a menü ikonokkal és lenyíló menükkel -->
-    <header class="top-header">
-      <div class="menu-wrapper">
-        <button class="icon-btn" @click="toggleMainMenu">☰</button>
-        
-        <div v-if="isMainMenuOpen" class="dropdown-menu left-menu">
-          <router-link to="/home" class="menu-item">Kutyáink</router-link>
-          <router-link to="/walk" class="menu-item">Séta rögzítése</router-link>
-          <router-link to="/stat" class="menu-item">Statisztikák</router-link>
-          <router-link to="/admin" class="menu-item">Admin felület</router-link>
-        </div>
-      </div>
-
-      <h1 class="page-title">Kutyáink</h1>
-
-      <div class="menu-wrapper">
-        <button class="icon-btn" @click="toggleProfileMenu">👤</button>
-        
-        <div v-if="isProfileMenuOpen" class="dropdown-menu right-menu">
-          <router-link to="/profile" class="menu-item">Személyes adatok</router-link>
-          <button class="menu-item logout-btn" @click="handleLogout">Kijelentkezés</button>
-        </div>
-      </div>
-    </header>
+    <SharedHeader title="Kutyáink" />
 
     <!-- Fő tartalom: Kutyák listázása képekkel -->
     <main class="content-container">
@@ -102,7 +81,7 @@ async function handleLogout() {
 .page-bg {
   background-color: #ede8d6;
   min-height: 100vh;
-  padding: 20px;
+  padding: 20px 12px;
   box-sizing: border-box;
 }
 
