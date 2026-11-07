@@ -231,7 +231,7 @@ function alaphelyzet() {
             <input type="radio" value="create" v-model="muveletTipus" @change="alaphelyzet" /> Új adat feltöltése
           </label>
           <label>
-            <input type="radio" value="update" v-model="muveletTipus" /> Meglévő adat módosítása (Update)
+            <input type="radio" value="update" v-model="muveletTipus" /> Meglévő adat módosítása
           </label>
         </div>
 

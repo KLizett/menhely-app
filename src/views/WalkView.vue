@@ -396,7 +396,6 @@ onUnmounted(() => window.removeEventListener('click', handleClickOutside))
         </div>
         <div v-if="kijeloltKenneltarsak.length" class="mates-box">
           <h4>🐕 Ugyanebben a kennelben élnek</h4>
-          <p>Jelöld ki a közös sétához a megfelelő kutyákat. A korlátozások mindig látszanak; az „Adatok” gombbal a részletes adatlap is megnyitható.</p>
           <div v-for="kutya in kijeloltKenneltarsak" :key="kutya.id" class="mate-card" :class="{ 'mate-card-disabled': !kenneltarsValaszthato(kutya) }">
             <div class="mate-card-header">
               <label class="mate-select">
